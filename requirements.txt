@@ -2,6 +2,4 @@ opencv-python
 numpy
 pytesseract
 Pillow
-matplotlib
-scikit-learn
-PyMaxflow 
+matplotlib 

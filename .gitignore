@@ -1,41 +1,9 @@
-# Image files
-*.jpg
-*.jpeg
-*.png
-*.gif
-*.bmp
-*.tiff
-*.tif
-*.webp
-*.ico
-*.svg
-*.JPG
-*.JPEG
-*.PNG
-
-# OCR output and temp files
-*_ocr_*.png
-*_ocr_*.jpg
-*_ocr_*.txt
-ocr_*.png
-ocr_*.jpg
-test_ocr_*.png
-temp_ocr_*.png
-*_segmented.png
-*binary.png
-*grayscale.png
-*enhanced.png
-*adaptive.png
-*denoised.png
-*resized.png
-
-# Python specific
+# Python-related
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -51,18 +19,19 @@ var/
 .installed.cfg
 *.egg
 
-# Virtual Environment
+# Virtual Environments
 venv/
-ENV/
 env/
-.env
+ENV/
+.env/
+.venv/
 
 # IDE specific files
 .idea/
 .vscode/
 *.swp
 *.swo
-.DS_Store
+*.sublime-*
 .spyderproject
 .spyproject
 .ropeproject
@@ -70,8 +39,69 @@ env/
 .pydevproject
 .settings/
 
-# Output and log files
+# OS specific files
+.DS_Store
+Thumbs.db
+.directory
+*.lnk
+desktop.ini
+
+# Image files (uncomment if you want to ignore all images)
+# *.jpg
+# *.jpeg
+# *.png
+# *.gif
+# *.bmp
+# *.tiff
+# *.tif
+# *.webp
+# *.ico
+# *.svg
+# *.JPG
+# *.JPEG
+# *.PNG
+
+# OCR output and temporary files
+ocr_input.png
+ocr_enhanced.png
+ocr_input_masked.png
+*_ocr_*.png
+*_ocr_*.jpg
+*_ocr_*.txt
+temp_ocr_*.png
+*_segmented.png
+*binary.png
+*grayscale.png
+*enhanced.png
+*adaptive.png
+*denoised.png
+*resized.png
+*_processed.png
+*_extracted_text.txt
+tessdata_config.txt
+
+# Removed GrabCut-related files
+graphcut_results/
+*_grabcut_*.png
+*_graphcut_*.png
+
+# Log files and outputs
 *.log
 output/
 results/
-screenshots/ 
+screenshots/
+logs/
+
+# Local configuration
+.local/
+tessdata/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+
+# Sample images (you may want to keep these commented out if you need to include sample images)
+# sample_images/
+# samples/
+# test_images/ 
