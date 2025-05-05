@@ -1,0 +1,77 @@
+# Image files
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.tif
+*.webp
+*.ico
+*.svg
+*.JPG
+*.JPEG
+*.PNG
+
+# OCR output and temp files
+*_ocr_*.png
+*_ocr_*.jpg
+*_ocr_*.txt
+ocr_*.png
+ocr_*.jpg
+test_ocr_*.png
+temp_ocr_*.png
+*_segmented.png
+*binary.png
+*grayscale.png
+*enhanced.png
+*adaptive.png
+*denoised.png
+*resized.png
+
+# Python specific
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.env
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+.spyderproject
+.spyproject
+.ropeproject
+.project
+.pydevproject
+.settings/
+
+# Output and log files
+*.log
+output/
+results/
+screenshots/ 
