@@ -315,153 +315,106 @@ class ImageTextExtractor:
             self.status_var.set("Reset to original image")
     
     def run_grabcut(self):
-        """Run GrabCut segmentation on the selected region with optimal accuracy"""
-        if self.display_image is None:
+        """Run GrabCut segmentation on the selected region with optimal accuracy for text"""
+        if self.display_image is None or self.display_image.size == 0:
             messagebox.showinfo("Info", "Please open an image first")
             return
-            
+
         if self.rect == (0, 0, 0, 0):
             messagebox.showinfo("Info", "Please select a region first")
             return
-        
+
         try:
-            # Store original image for blending later
             original = self.display_image.copy()
-            
-            # Create mask for GrabCut
-            mask = np.zeros(self.display_image.shape[:2], np.uint8)
-            bgdModel = np.zeros((1, 65), np.float64)
-            fgdModel = np.zeros((1, 65), np.float64)
-            
-            # Get rectangle coordinates
             x, y, w, h = self.rect
-            
-            # Ensure valid rectangle
+            h_img, w_img = self.display_image.shape[:2]
+
+            # Ensure valid rectangle size
             if w < 10 or h < 10:
                 messagebox.showinfo("Info", "Selection too small. Please select a larger area.")
                 return
-            
-            # Run initial GrabCut
+
+            # Ensure selection is within image bounds
+            if x < 0 or y < 0 or x + w > w_img or y + h > h_img:
+                messagebox.showinfo("Info", "Selection is out of image bounds. Please select a valid region.")
+                return
+
+            # Create mask for GrabCut
+            mask = np.zeros(self.display_image.shape[:2], np.uint8)
+            border = 5
+            # Clamp border region to image bounds
+            x0 = max(0, x - border)
+            y0 = max(0, y - border)
+            x1 = min(w_img, x + w + border)
+            y1 = min(h_img, y + h + border)
+            mask[:] = cv2.GC_PR_BGD
+            mask[y0:y1, x0:x1] = cv2.GC_PR_FGD
+            mask[y:y+h, x:x+w] = cv2.GC_FGD
+
+            # Check that mask has both foreground and background
+            if np.count_nonzero(mask == cv2.GC_FGD) == 0 or np.count_nonzero(mask == cv2.GC_PR_BGD) == 0:
+                messagebox.showinfo("Info", "Selection does not contain enough foreground or background. Please select a different region.")
+                return
+
+            bgdModel = np.zeros((1, 65), np.float64)
+            fgdModel = np.zeros((1, 65), np.float64)
+
             self.status_var.set("Running GrabCut segmentation...")
             rect = (x, y, w, h)
             cv2.grabCut(self.display_image, mask, rect, bgdModel, fgdModel, 5, cv2.GC_INIT_WITH_RECT)
-            
-            # Iterate to refine the result (more iterations for better accuracy)
-            for _ in range(3):
-                cv2.grabCut(self.display_image, mask, None, bgdModel, fgdModel, 2, cv2.GC_INIT_WITH_MASK)
-            
-            # Create mask for segmentation (more precise with four mask values)
-            # 0 = background, 1 = foreground, 2 = probable background, 3 = probable foreground
-            result_mask = np.zeros_like(mask)
-            
-            # Definite background
-            result_mask[mask == 0] = 0
-            result_mask[mask == 2] = 0
-            
-            # Definite and probable foreground
-            result_mask[mask == 1] = 255
-            result_mask[mask == 3] = 255
-            
-            # Clean mask with morphological operations optimized for text
-            kernel_size = max(1, min(5, w // 100))  # Adaptive kernel size
-            kernel = np.ones((kernel_size, kernel_size), np.uint8)
-            
-            # Close small gaps in text (important for connecting character parts)
-            result_mask = cv2.morphologyEx(result_mask, cv2.MORPH_CLOSE, kernel, iterations=2)
-            
-            # Remove noise (small isolated pixels)
-            result_mask = cv2.morphologyEx(result_mask, cv2.MORPH_OPEN, kernel, iterations=1)
-            
-            # Create a background that contrasts well with text
-            # White background works well for dark text, black background for light text
-            # Let's create a white background
-            bg_color = np.ones_like(original) * 255  # White background
-            
-            # Apply mask to get segmented image with original colors
+
+            # Additional refinement iterations
+            for _ in range(5):
+                cv2.grabCut(self.display_image, mask, None, bgdModel, fgdModel, 5, cv2.GC_INIT_WITH_MASK)
+                temp_mask = np.where((mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD), 255, 0).astype('uint8')
+                kernel = np.ones((3, 3), np.uint8)
+                temp_mask = cv2.morphologyEx(temp_mask, cv2.MORPH_CLOSE, kernel, iterations=1)
+                temp_mask = cv2.morphologyEx(temp_mask, cv2.MORPH_OPEN, kernel, iterations=1)
+                mask[temp_mask == 255] = cv2.GC_FGD
+                mask[temp_mask == 0] = cv2.GC_BGD
+
+            result_mask = np.where((mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD), 255, 0).astype('uint8')
+            num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(result_mask, connectivity=8)
+            min_size = (w * h) // 200
+            for i in range(1, num_labels):
+                if stats[i, cv2.CC_STAT_AREA] < min_size:
+                    result_mask[labels == i] = 0
+
+            rgba = cv2.cvtColor(original, cv2.COLOR_BGR2BGRA)
+            rgba[:, :, 3] = result_mask
+            white_bg = np.ones_like(original) * 255
             segmented = cv2.bitwise_and(original, original, mask=result_mask)
-            
-            # Create inverse mask for background
             inv_mask = cv2.bitwise_not(result_mask)
-            
-            # Apply the background color where the mask is 0 (background)
-            background = cv2.bitwise_and(bg_color, bg_color, mask=inv_mask)
-            
-            # Combine foreground and background
+            background = cv2.bitwise_and(white_bg, white_bg, mask=inv_mask)
             result = cv2.add(segmented, background)
-            
-            # Enhance contrast of the segmented foreground to make it more visible
-            # Convert to LAB color space where L is lightness
-            lab = cv2.cvtColor(result, cv2.COLOR_BGR2LAB)
-            l, a, b = cv2.split(lab)
-            
-            # Apply CLAHE to the L channel to enhance contrast
-            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-            cl = clahe.apply(l)
-            
-            # Merge the enhanced L channel back
-            enhanced_lab = cv2.merge((cl, a, b))
-            
-            # Convert back to BGR
-            enhanced_result = cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2BGR)
-            
-            # Create visibility options
-            option1 = result  # Original foreground with white background
-            option2 = enhanced_result  # Enhanced contrast
-            option3 = segmented  # Just the masked foreground (transparent background)
-            
-            # First display option1 (most natural looking)
-            self.display_image = option1.copy()
+            black_bg = np.zeros_like(original)
+            black_bg_result = cv2.add(segmented, cv2.bitwise_and(black_bg, black_bg, mask=inv_mask))
+            option1 = rgba
+            option2 = result
+            option3 = black_bg_result
+            self.display_image = cv2.cvtColor(rgba, cv2.COLOR_BGRA2BGR)
             self.update_display()
-            
-            # Save options for user selection
             self.segmentation_options = {
-                "natural": option1,
-                "enhanced": option2,
-                "masked": option3,
+                "transparent": option1,
+                "white": option2,
+                "black": option3,
                 "original": original
             }
-            
-            # Ask user to select preferred visibility
             visibility_choice = messagebox.askquestion("Segmentation Result", 
                                               "Is the segmented result visible enough?\n\n" +
-                                              "Select 'No' to see enhanced visibility options.")
-            
+                                              "Select 'No' to see other background options.")
             if visibility_choice == 'no':
-                # Show enhanced version
                 self.display_image = option2.copy()
                 self.update_display()
-                
-                # Ask if the enhanced version is better
-                enhanced_choice = messagebox.askquestion("Enhanced Visibility", 
-                                                "Is this enhanced version better?\n\n" +
-                                                "Select 'No' to try another option.")
-                
-                if enhanced_choice == 'no':
-                    # Create a custom background with specific color for better contrast
-                    text_brightness = np.mean(cv2.cvtColor(segmented, cv2.COLOR_BGR2GRAY)[result_mask > 0])
-                    
-                    if text_brightness > 127:
-                        # Dark text on light background
-                        custom_bg = np.ones_like(original) * 0  # Black background
-                    else:
-                        # Light text on dark background
-                        custom_bg = np.ones_like(original) * 255  # White background
-                    
-                    # Apply custom background
-                    custom_bg_applied = cv2.bitwise_and(custom_bg, custom_bg, mask=inv_mask)
-                    final_option = cv2.add(segmented, custom_bg_applied)
-                    
-                    # Apply additional brightness/contrast adjustment
-                    final_option = cv2.convertScaleAbs(final_option, alpha=1.2, beta=10)
-                    
-                    self.display_image = final_option
+                bg_choice = messagebox.askquestion("Background Options", 
+                                                "Is this white background better?\n\n" +
+                                                "Select 'No' to try black background.")
+                if bg_choice == 'no':
+                    self.display_image = option3.copy()
                     self.update_display()
-            
             self.status_var.set("GrabCut segmentation completed")
-            
         except Exception as e:
             messagebox.showerror("Error", f"Error during segmentation: {str(e)}")
-            # Log detailed error for debugging
             import traceback
             print(traceback.format_exc())
     
