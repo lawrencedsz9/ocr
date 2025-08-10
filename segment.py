@@ -94,7 +94,7 @@ class ImageTextExtractor:
         selection_frame.pack(fill=X, padx=5, pady=5, ipady=5)
         Label(selection_frame, text="Draw a rectangle around text").pack(anchor=W, padx=5, pady=2)
         Button(selection_frame, text="Reset Image", command=self.reset_image).pack(fill=X, padx=5, pady=2)
-        Button(selection_frame, text="Run GrabCut on Selection", command=self.run_grabcut).pack(fill=X, padx=5, pady=2)
+        Button(selection_frame, text="Run GrabCut on Selection", command=self.run_grabcut).pack(fill=X, padx=3, pady=2)
         
         # OCR frame
         ocr_frame = LabelFrame(self.left_panel, text="OCR Tools")
